@@ -130,6 +130,10 @@ Every `PROJECT.md` uses this numbered structure:
   > ⚠ Service Layer Supremacy — Core Architectural Rule
   > [explanation of the rule]
   ```
+  Also require explicit definitions:
+  - **Dispatch Layer** includes gateways/adapters only (API gateways, HTTP handlers/controllers, event consumers, scheduled triggers, webhook receivers, and transport mappers).
+  - **Orchestration Layer** includes application use-case coordinators in service modules that sequence domain services/repositories/events; it is not a transport layer.
+  - **Service Layer** includes only domain/application services (microservices and their domain modules), never gateway/transport code.
 
 - **4.2 Production Architecture** — ASCII art diagram of what this would look like fully funded (ECS/ALB, Multi-AZ RDS, WAF, etc.). Include a brief "Why [technology] in production" note.
 
@@ -186,6 +190,7 @@ Every `PROJECT.md` uses this numbered structure:
     | { action: 'actionName'; payload: InputType }
     | ...
   ```
+  Require a short note stating that every `ServiceAction` is invoked by dispatch adapters and implemented by service-layer modules only.
 
 - **6.3 Tech Stack** — Table: `Layer | Technology`. Cover backend language, ORM, auth, email rendering, AWS SDKs, local API server, build tool, testing, local emulation, IaC, CI/CD, and frontend (framework, routing, state, UI, build, hosting).
 
@@ -283,15 +288,17 @@ Every `PROJECT.md` uses this numbered structure:
 **Required rules to always include**:
 
 1. **Service Layer Supremacy** (restate): all business logic in `src/service/`. Lambda handlers do three things only: parse input, call service, return result.
-2. **No direct DB access outside `src/db/`**: all DB queries go through typed query functions.
-3. **No secrets in code**: use env vars, never hardcode.
-4. **TypeScript strict mode**: no `any`, no implicit returns, explicit types on all function signatures.
-5. **Error handling**: all errors bubble up as typed error objects or result types; no unhandled promise rejections.
-6. **Idempotency**: every write operation that accepts an `idempotencyKey` must enforce uniqueness.
-7. **Test coverage**: every service layer function must have a unit test.
-8. **Migration discipline**: never edit migration files after they're created; create new migrations instead.
-9. **Environment parity**: local behavior must match AWS behavior; use the same code paths.
-10. **AI guardrails**: explicitly list what Claude/Cursor/Copilot must NOT do (e.g. no creating new patterns not in this document, no generating Lambda handlers that contain business logic).
+2. **Dispatch Layer = Gateways/Adapters only**: API gateways/controllers/handlers/consumers/schedulers/webhook receivers are transport adapters and cannot be treated as service-layer components.
+3. **Orchestration belongs to service modules**: multi-step workflow sequencing across repositories/events must live in service-layer use-case orchestrators, not in handlers/consumers/controllers.
+4. **No direct DB access outside `src/db/`**: all DB queries go through typed query functions.
+5. **No secrets in code**: use env vars, never hardcode.
+6. **TypeScript strict mode**: no `any`, no implicit returns, explicit types on all function signatures.
+7. **Error handling**: all errors bubble up as typed error objects or result types; no unhandled promise rejections.
+8. **Idempotency**: every write operation that accepts an `idempotencyKey` must enforce uniqueness.
+9. **Test coverage**: every service layer function must have a unit test.
+10. **Migration discipline**: never edit migration files after they're created; create new migrations instead.
+11. **Environment parity**: local behavior must match AWS behavior; use the same code paths.
+12. **AI guardrails**: explicitly list what Claude/Cursor/Copilot must NOT do (e.g. no creating new patterns not in this document, no generating Lambda handlers that contain business logic).
 
 ---
 
@@ -347,6 +354,8 @@ npm run dev
 ```markdown
 ## Architecture Rules
 - ALL business logic lives in `src/service/`. Lambda handlers only: parse input → call service → return result.
+- Dispatch layer components (gateways/controllers/handlers/consumers/schedulers) are transport adapters only.
+- Multi-step orchestration belongs to service-layer use-case modules, not transport adapters.
 - ALL DB access goes through `src/db/queries/`. No Prisma calls outside this directory.
 - NEVER put domain logic, DB queries, or side effects in Lambda handlers.
 ```
